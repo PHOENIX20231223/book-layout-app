@@ -38,54 +38,130 @@ function generateCSS(strategy){
 export default {
  async fetch(request){
 
- if (request.method === "GET") {
-  return new Response(`
-  <!DOCTYPE html>
-  <html>
-  <head>
-  <meta charset="UTF-8">
-  <title>云书排 · EPUB AI排版工具</title>
-  <meta name="description" content="EPUB 自动排版 · 横竖排转换 · AI出版级排版">
-  </head>
+if (request.method === "GET") {
+return new Response(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>云书排 · EPUB AI排版</title>
 
-  <body style="font-family:sans-serif;padding:40px">
+<style>
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+background:linear-gradient(135deg,#667eea,#764ba2);
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+color:#333;
+}
 
-  <h1>云书排 · EPUB AI排版工具</h1>
+.card{
+background:white;
+padding:40px;
+border-radius:16px;
+width:420px;
+box-shadow:0 20px 60px rgba(0,0,0,0.2);
+text-align:center;
+}
 
-  <form id="form">
-  <input type="file" name="file" accept=".epub" required><br><br>
+h1{
+margin-top:0;
+}
 
-  <select name="mode">
-  <option value="auto">AI自动（推荐）</option>
-  <option value="horizontal">横排出版物</option>
-  <option value="vertical">竖排阅读</option>
-  <option value="novel">小说阅读</option>
-  <option value="compact">紧凑排版</option>
-  </select><br><br>
+input,select{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:8px;
+border:1px solid #ddd;
+}
 
-  <button type="submit">开始转换</button>
-  </form>
+button{
+margin-top:20px;
+width:100%;
+padding:14px;
+border:none;
+border-radius:8px;
+background:#667eea;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
 
-  <hr>
-  <p>永久免费使用。如有帮助，可支持开发者 ❤️</p>
-  <a href="https://buymeacoffee.com/">支持开发者</a>
+button:hover{
+background:#5a67d8;
+}
 
-  <script>
-  document.getElementById("form").onsubmit=async e=>{
-    e.preventDefault()
-    const fd=new FormData(e.target)
-    const res=await fetch("/",{method:"POST",body:fd})
-    const blob=await res.blob()
-    const a=document.createElement("a")
-    a.href=URL.createObjectURL(blob)
-    a.download="converted.epub"
-    a.click()
-  }
-  </script>
+#loading{
+display:none;
+margin-top:20px;
+}
 
-  </body>
-  </html>
-  `, { headers: { "Content-Type": "text/html" } })
+.footer{
+margin-top:20px;
+font-size:14px;
+color:#777;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>📘 云书排</h1>
+<p>EPUB AI自动排版 · Kindle优化</p>
+
+<form id="form">
+<input type="file" name="file" accept=".epub" required>
+
+<select name="mode">
+<option value="auto">AI自动（推荐）</option>
+<option value="horizontal">横排出版物</option>
+<option value="vertical">竖排阅读</option>
+<option value="novel">小说阅读</option>
+<option value="compact">紧凑排版</option>
+</select>
+
+<button type="submit">开始转换</button>
+</form>
+
+<div id="loading">处理中，请稍候...</div>
+
+<div class="footer">
+永久免费使用 ❤️<br>
+<a href="https://buymeacoffee.com/" target="_blank">支持开发者</a>
+</div>
+
+</div>
+
+<script>
+const form=document.getElementById("form")
+const loading=document.getElementById("loading")
+
+form.onsubmit=async e=>{
+e.preventDefault()
+loading.style.display="block"
+
+const fd=new FormData(form)
+const res=await fetch("/",{method:"POST",body:fd})
+const blob=await res.blob()
+
+loading.style.display="none"
+
+const a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="converted.epub"
+a.click()
+}
+</script>
+
+</body>
+</html>
+`,{headers:{"Content-Type":"text/html"}})
 }
 
   const form=await request.formData()
