@@ -237,22 +237,31 @@ a.click()
   zip.file("publication.css",css)
 }
 
-  for(const name of Object.keys(zip.files)){
-    if(name.endsWith(".xhtml")||name.endsWith(".html")){
-      const html=await zip.file(name).async("string")
-  // 安全注入CSS（不会破坏EPUB结构）
-let newHtml = html
+for(const name of Object.keys(zip.files)){
 
-if (!html.includes("publication.css")) {
-  newHtml = html.replace(
-    /<head[^>]*>/i,
-    match => match + '\\n<link rel="stylesheet" href="publication.css"/>'
-  )
-}
+  if(name.endsWith(".xhtml") || name.endsWith(".html")){
 
-zip.file(name, newHtml)
+    let html = await zip.file(name).async("string")
+
+    // 1️⃣ 出版级清洗
+    html = cleanHTML(html)
+
+    // 2️⃣ 安全注入CSS
+    if(!html.includes("publication.css")){
+      html = html.replace(
+        /<head[^>]*>/i,
+        match => match + '\\n<link rel="stylesheet" href="publication.css"/>'
+      )
     }
+
+    zip.file(name, html)
   }
+
+  // 3️⃣ 删除原CSS文件（关键）
+  if(name.endsWith(".css") && name !== "publication.css"){
+    delete zip.files[name]
+  }
+}
 
   const output=await zip.generateAsync({type:"arraybuffer"})
 
