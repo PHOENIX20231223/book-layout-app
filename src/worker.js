@@ -1,81 +1,190 @@
 import JSZip from "jszip"
 
 /* =============================
+   思源宋体 Base64（示例字体）
+   ⚠ 演示版（避免Worker过大）
+   后面可换完整字体
+============================= */
+
+const FONT_BASE64 =
+"AAEAAAALAIAAAwAwT1MvMg8SBJcAAAC8AAAAYGNtYXABdXUAAAF8AAABPGdhc3AAAAAQAAADHAAAAAhnbHlmAAAAAAADHAAAACBoZWFkAAABJAAAADZoaGVhAAABWAAAACRobXR4AAABeAAAABRsb2NhAAABkAAAABRtYXhwAAABsAAAACBuYW1lAAABzAAAADZwb3N0AAAB/AAAACBwcmVwAAACGAAAADYAAQAAAADMPaLPAAAAAMw9os8AAQAAAAA="
+
+function base64ToArrayBuffer(base64){
+const binary=atob(base64)
+const len=binary.length
+const bytes=new Uint8Array(len)
+for(let i=0;i<len;i++) bytes[i]=binary.charCodeAt(i)
+return bytes
+}
+
+/* =============================
    AI 排版判定
 ============================= */
 
 function extractText(html){
-  return html.replace(/<[^>]+>/g,"")
+return html.replace(/<[^>]+>/g,"")
 }
 
 function classicalRatio(text){
-  const classicalWords="之乎者也焉其若乃则兮矣耳"
-  let count=0
-  for(const c of text){
-    if(classicalWords.includes(c)) count++
-  }
-  return count / Math.max(text.length,1)
+const classicalWords="之乎者也焉其若乃则兮矣耳"
+let count=0
+for(const c of text) if(classicalWords.includes(c)) count++
+return count/Math.max(text.length,1)
 }
 
 function decideLayout(text){
-  if(classicalRatio(text)>0.03) return "vertical"
-  if(/[ぁ-んァ-ン]/.test(text)) return "vertical"
-  if(text.length>50000) return "compact"
-  return "novel"
+if(classicalRatio(text)>0.03) return "vertical"
+if(/[ぁ-んァ-ン]/.test(text)) return "vertical"
+if(text.length>50000) return "compact"
+return "novel"
 }
 
 /* =============================
-   出版级 CSS
+   出版级 CSS（含字体）
 ============================= */
 
 function generateCSS(strategy){
 
-// ===== 竖排（Kindle兼容）=====
+const fontFace=`
+@font-face{
+font-family:"BookFont";
+src:url("font.otf");
+}
+`
+
 if(strategy==="vertical"){
-return `
-html, body{
-writing-mode: vertical-rl;
--webkit-writing-mode: vertical-rl;
+return fontFace+`
+html,body{
+writing-mode:vertical-rl;
+-webkit-writing-mode:vertical-rl;
+font-family:"BookFont";
 line-height:1.9;
 letter-spacing:0.06em;
 margin:8% 6%;
-text-align:justify;
 }
-
-p{
-text-indent:2em;
-margin-left:1.2em;
-}
-
-h1,h2,h3{
-text-align:center;
-}
+p{text-indent:2em;margin-left:1.2em}
 `
 }
 
-// ===== 紧凑 =====
 if(strategy==="compact"){
-return `
+return fontFace+`
 body{
+font-family:"BookFont";
 line-height:1.6;
 margin:5% 6%;
-text-align:justify;
 }
 p{text-indent:2em}
 `
 }
 
-// ===== 默认阅读 =====
-return `
+return fontFace+`
 body{
+font-family:"BookFont";
 line-height:1.85;
 letter-spacing:0.01em;
 margin:6% 8%;
-text-align:justify;
 }
 p{text-indent:2em;margin-bottom:0.9em}
-h1,h2,h3{text-align:center}
 `
+}
+
+/* =============================
+   TXT 自动章节识别
+============================= */
+
+function splitChapters(text){
+
+const lines=text.split(/\r?\n/)
+let chapters=[]
+let current={title:"正文",content:[]}
+
+const chapterRegex=/^(第[0-9一二三四五六七八九十百千]+章|Chapter\\s+\\d+|\\d+\\.)/i
+
+for(const line of lines){
+
+if(chapterRegex.test(line.trim())){
+if(current.content.length){
+chapters.push(current)
+}
+current={title:line.trim(),content:[]}
+}else{
+current.content.push(line)
+}
+}
+
+chapters.push(current)
+return chapters
+}
+
+/* =============================
+   TXT → EPUB 生成（含目录）
+============================= */
+
+async function createEPUBFromTXT(text,css){
+
+const zip=new JSZip()
+
+zip.file("mimetype","application/epub+zip",{compression:"STORE"})
+
+zip.file("META-INF/container.xml",`
+<?xml version="1.0"?>
+<container version="1.0"
+xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+<rootfiles>
+<rootfile full-path="OEBPS/content.opf"
+media-type="application/oebps-package+xml"/>
+</rootfiles>
+</container>`)
+
+const chapters=splitChapters(text)
+
+// 生成章节文件
+let manifest=""
+let spine=""
+let nav=""
+
+chapters.forEach((ch,i)=>{
+
+const id="ch"+i
+const paragraphs=ch.content.map(p=>`<p>${p}</p>`).join("")
+
+zip.file(`OEBPS/${id}.xhtml`,`
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>${ch.title}</title>
+<link rel="stylesheet" href="publication.css"/>
+</head>
+<body><h2>${ch.title}</h2>${paragraphs}</body>
+</html>`)
+
+manifest+=`<item id="${id}" href="${id}.xhtml" media-type="application/xhtml+xml"/>`
+spine+=`<itemref idref="${id}"/>`
+nav+=`<li><a href="${id}.xhtml">${ch.title}</a></li>`
+})
+
+// 目录
+zip.file("OEBPS/nav.xhtml",`
+<html xmlns="http://www.w3.org/1999/xhtml">
+<body>
+<nav epub:type="toc"><ol>${nav}</ol></nav>
+</body></html>`)
+
+zip.file("OEBPS/publication.css",css)
+zip.file("OEBPS/font.otf",base64ToArrayBuffer(FONT_BASE64))
+
+zip.file("OEBPS/content.opf",`
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+<manifest>
+<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+<item id="css" href="publication.css" media-type="text/css"/>
+<item id="font" href="font.otf" media-type="font/otf"/>
+${manifest}
+</manifest>
+<spine>${spine}</spine>
+</package>`)
+
+return zip
 }
 
 /* =============================
@@ -85,109 +194,9 @@ h1,h2,h3{text-align:center}
 export default {
 async fetch(request){
 
-/* ---------- UI 页面 ---------- */
-
-if (request.method === "GET") {
-return new Response(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>云书排 · EPUB AI排版</title>
-
-<style>
-body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
-background:linear-gradient(135deg,#667eea,#764ba2);
-height:100vh;
-display:flex;
-align-items:center;
-justify-content:center;
+if(request.method==="GET"){
+return new Response("云书排运行中",{headers:{'Content-Type':'text/plain'}})
 }
-
-.card{
-background:white;
-padding:40px;
-border-radius:16px;
-width:420px;
-box-shadow:0 20px 60px rgba(0,0,0,0.2);
-text-align:center;
-}
-
-input,select{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:8px;
-border:1px solid #ddd;
-}
-
-button{
-margin-top:20px;
-width:100%;
-padding:14px;
-border:none;
-border-radius:8px;
-background:#667eea;
-color:white;
-font-size:16px;
-cursor:pointer;
-}
-
-#loading{display:none;margin-top:20px;}
-</style>
-</head>
-
-<body>
-<div class="card">
-<h1>📘 云书排</h1>
-<p>EPUB AI自动排版 · Kindle优化</p>
-
-<form id="form">
-<input type="file" name="file" accept=".epub" required>
-
-<select name="mode">
-<option value="auto">AI自动（推荐）</option>
-<option value="horizontal">横排出版物</option>
-<option value="vertical">竖排阅读</option>
-<option value="novel">小说阅读</option>
-<option value="compact">紧凑排版</option>
-</select>
-
-<button type="submit">开始转换</button>
-</form>
-
-<div id="loading">处理中，请稍候...</div>
-</div>
-
-<script>
-const form=document.getElementById("form")
-const loading=document.getElementById("loading")
-
-form.onsubmit=async e=>{
-e.preventDefault()
-loading.style.display="block"
-
-const fd=new FormData(form)
-const res=await fetch("/",{method:"POST",body:fd})
-const blob=await res.blob()
-
-loading.style.display="none"
-
-const a=document.createElement("a")
-a.href=URL.createObjectURL(blob)
-a.download="converted.epub"
-a.click()
-}
-</script>
-
-</body>
-</html>
-`,{headers:{"Content-Type":"text/html"}})
-}
-
-/* ---------- 处理 EPUB ---------- */
 
 try{
 
@@ -195,14 +204,29 @@ const form=await request.formData()
 const file=form.get("file")
 const mode=form.get("mode")||"auto"
 
-if(!file||!file.name.endsWith(".epub")){
-return new Response("仅支持EPUB",{status:400})
-}
+if(!file) return new Response("未上传文件",{status:400})
 
-// 读取 EPUB
-const zip=await JSZip.loadAsync(await file.arrayBuffer())
+const isTXT=file.name.toLowerCase().endsWith(".txt")
+const isEPUB=file.name.toLowerCase().endsWith(".epub")
 
-/* ---------- 提取文本样本 ---------- */
+if(!isTXT && !isEPUB)
+return new Response("仅支持 EPUB 或 TXT",{status:400})
+
+let zip
+
+/* ===== TXT处理 ===== */
+if(isTXT){
+
+const text=await file.text()
+const strategy=mode==="auto"?decideLayout(text):mode
+const css=generateCSS(strategy)
+
+zip=await createEPUBFromTXT(text,css)
+
+/* ===== EPUB处理 ===== */
+}else{
+
+zip=await JSZip.loadAsync(await file.arrayBuffer())
 
 let textSample=""
 
@@ -214,51 +238,24 @@ break
 }
 }
 
-/* ---------- AI判定排版 ---------- */
-
 const strategy=mode==="auto"?decideLayout(textSample):mode
 const css=generateCSS(strategy)
 
-// 写入统一CSS
 zip.file("publication.css",css)
-
-/* ---------- 修改HTML（安全注入CSS） ---------- */
+zip.file("font.otf",base64ToArrayBuffer(FONT_BASE64))
 
 for(const name of Object.keys(zip.files)){
-
 if(name.endsWith(".xhtml")||name.endsWith(".html")){
-
 let html=await zip.file(name).async("string")
-
-// 删除旧CSS引用
 html=html.replace(/<link[^>]*stylesheet[^>]*>/gi,"")
-
-// 注入出版CSS
-if(!html.includes("publication.css")){
-html=html.replace(
-/<head[^>]*>/i,
-match=>match+'\\n<link rel="stylesheet" href="publication.css"/>'
-)
-}
-
+html=html.replace(/<head[^>]*>/i,
+m=>m+'<link rel="stylesheet" href="publication.css"/>')
 zip.file(name,html)
 }
 }
-
-/* ---------- 删除旧CSS文件 ---------- */
-
-for(const name of Object.keys(zip.files)){
-if(name.endsWith(".css")&&name!=="publication.css"){
-delete zip.files[name]
-}
 }
 
-/* ---------- 输出 EPUB ---------- */
-
-const output=await zip.generateAsync({
-type:"arraybuffer",
-mimeType:"application/epub+zip"
-})
+const output=await zip.generateAsync({type:"arraybuffer"})
 
 return new Response(output,{
 headers:{
@@ -268,7 +265,7 @@ headers:{
 })
 
 }catch(e){
-return new Response("EPUB处理失败："+e.message,{status:500})
+return new Response("处理失败："+e.message,{status:500})
 }
 
 }
