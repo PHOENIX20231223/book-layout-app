@@ -1,28 +1,8 @@
-
 import JSZip from "jszip"
-import { parseHTML } from "linkedom"
 
 /* =============================
-   出版级 EPUB 清洗工具
+   AI 排版判定
 ============================= */
-
-
-// 删除原有 CSS link
-function removeOldCSS(html){
-  return html.replace(/<link[^>]*stylesheet[^>]*>/gi,"")
-}
-
-
-
-// XHTML 自闭合修复
-function fixSelfClosing(html){
-  return html
-    .replace(/<br>/g,"<br/>")
-    .replace(/<hr>/g,"<hr/>")
-    .replace(/<img([^>]*)>/g,"<img$1/>")
-}
-
-
 
 function extractText(html){
   return html.replace(/<[^>]+>/g,"")
@@ -43,6 +23,10 @@ function decideLayout(text){
   if(text.length>50000) return "compact"
   return "novel"
 }
+
+/* =============================
+   出版级 CSS
+============================= */
 
 function generateCSS(strategy){
 
@@ -82,8 +66,15 @@ p{text-indent:2em;margin-bottom:0.9em}
 h1,h2,h3{text-align:center}
 `
 }
+
+/* =============================
+   Worker 主逻辑
+============================= */
+
 export default {
- async fetch(request){
+async fetch(request){
+
+/* ---------- UI 页面 ---------- */
 
 if (request.method === "GET") {
 return new Response(`
@@ -102,7 +93,6 @@ height:100vh;
 display:flex;
 align-items:center;
 justify-content:center;
-color:#333;
 }
 
 .card{
@@ -112,10 +102,6 @@ border-radius:16px;
 width:420px;
 box-shadow:0 20px 60px rgba(0,0,0,0.2);
 text-align:center;
-}
-
-h1{
-margin-top:0;
 }
 
 input,select{
@@ -138,27 +124,12 @@ font-size:16px;
 cursor:pointer;
 }
 
-button:hover{
-background:#5a67d8;
-}
-
-#loading{
-display:none;
-margin-top:20px;
-}
-
-.footer{
-margin-top:20px;
-font-size:14px;
-color:#777;
-}
+#loading{display:none;margin-top:20px;}
 </style>
 </head>
 
 <body>
-
 <div class="card">
-
 <h1>📘 云书排</h1>
 <p>EPUB AI自动排版 · Kindle优化</p>
 
@@ -177,12 +148,6 @@ color:#777;
 </form>
 
 <div id="loading">处理中，请稍候...</div>
-
-<div class="footer">
-永久免费使用 ❤️<br>
-<a href="https://buymeacoffee.com/" target="_blank">支持开发者</a>
-</div>
-
 </div>
 
 <script>
@@ -211,86 +176,89 @@ a.click()
 `,{headers:{"Content-Type":"text/html"}})
 }
 
-  const form=await request.formData()
-  const file=form.get("file")
-  const mode=form.get("mode")||"auto"
+/* ---------- 处理 EPUB ---------- */
 
-  if(!file||!file.name.endsWith(".epub")){
-    return new Response("仅支持EPUB",{status:400})
-  }
+try{
 
-  const zip=await JSZip.loadAsync(await file.arrayBuffer())
+const form=await request.formData()
+const file=form.get("file")
+const mode=form.get("mode")||"auto"
 
-  let textSample=""
+if(!file||!file.name.endsWith(".epub")){
+return new Response("仅支持EPUB",{status:400})
+}
+
+// 读取 EPUB
+const zip=await JSZip.loadAsync(await file.arrayBuffer())
+
+/* ---------- 提取文本样本 ---------- */
+
+let textSample=""
+
 for(const name of Object.keys(zip.files)){
-
-  if(name.endsWith(".xhtml") || name.endsWith(".html")){
-
-    let html = await zip.file(name).async("string")
-
-    // 1️⃣ 最小修复
-    html = fixXHTML(html)
-
-    // 2️⃣ 删除旧CSS引用（保留结构）
-    html = removeOldCSSLinks(html)
-
-    // 3️⃣ 安全注入出版CSS
-    if(!html.includes("publication.css")){
-      html = html.replace(
-        /<head[^>]*>/i,
-        match => match + '\\n<link rel="stylesheet" type="text/css" href="publication.css"/>'
-      )
-    }
-
-    zip.file(name, html)
-  }
-
-  // 删除旧CSS文件（只删除文件，不动HTML）
-  if(name.endsWith(".css") && name !== "publication.css"){
-    delete zip.files[name]
-  }
+if(name.endsWith(".xhtml")||name.endsWith(".html")){
+const html=await zip.file(name).async("string")
+textSample+=extractText(html).slice(0,2000)
+break
+}
 }
 
-  const strategy=mode==="auto"?decideLayout(textSample):mode
-  const css=generateCSS(strategy)
+/* ---------- AI判定排版 ---------- */
 
-  if(!zip.files["publication.css"]){
-  zip.file("publication.css",css)
-}
+const strategy=mode==="auto"?decideLayout(textSample):mode
+const css=generateCSS(strategy)
+
+// 写入统一CSS
+zip.file("publication.css",css)
+
+/* ---------- 修改HTML（安全注入CSS） ---------- */
 
 for(const name of Object.keys(zip.files)){
 
-  if(name.endsWith(".xhtml") || name.endsWith(".html")){
+if(name.endsWith(".xhtml")||name.endsWith(".html")){
 
-    let html = await zip.file(name).async("string")
+let html=await zip.file(name).async("string")
 
-    // 1️⃣ 出版级清洗
-    html = cleanHTML(html)
+// 删除旧CSS引用
+html=html.replace(/<link[^>]*stylesheet[^>]*>/gi,"")
 
-    // 2️⃣ 安全注入CSS
-    if(!html.includes("publication.css")){
-      html = html.replace(
-        /<head[^>]*>/i,
-        match => match + '\\n<link rel="stylesheet" href="publication.css"/>'
-      )
-    }
-
-    zip.file(name, html)
-  }
-
-  // 3️⃣ 删除原CSS文件（关键）
-  if(name.endsWith(".css") && name !== "publication.css"){
-    delete zip.files[name]
-  }
+// 注入出版CSS
+if(!html.includes("publication.css")){
+html=html.replace(
+/<head[^>]*>/i,
+match=>match+'\\n<link rel="stylesheet" href="publication.css"/>'
+)
 }
 
-  const output=await zip.generateAsync({type:"arraybuffer"})
+zip.file(name,html)
+}
+}
 
-  return new Response(output,{
-    headers:{
-      "Content-Type":"application/epub+zip",
-      "Content-Disposition":"attachment; filename=converted.epub"
-    }
-  })
- }
+/* ---------- 删除旧CSS文件 ---------- */
+
+for(const name of Object.keys(zip.files)){
+if(name.endsWith(".css")&&name!=="publication.css"){
+delete zip.files[name]
+}
+}
+
+/* ---------- 输出 EPUB ---------- */
+
+const output=await zip.generateAsync({
+type:"arraybuffer",
+mimeType:"application/epub+zip"
+})
+
+return new Response(output,{
+headers:{
+"Content-Type":"application/epub+zip",
+"Content-Disposition":"attachment; filename=converted.epub"
+}
+})
+
+}catch(e){
+return new Response("EPUB处理失败："+e.message,{status:500})
+}
+
+}
 }
