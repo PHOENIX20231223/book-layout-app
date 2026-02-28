@@ -1,0 +1,7 @@
+
+name = "book-layout-app"
+main = "src/worker.js"
+compatibility_date = "2025-03-01"
+
+[vars]
+MAX_FILE_SIZE = "52428800"

@@ -1,0 +1,14 @@
+
+{
+  "name": "book-layout-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "linkedom": "^0.16.6"
+  }
+}
