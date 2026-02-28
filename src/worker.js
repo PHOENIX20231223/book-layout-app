@@ -81,18 +81,19 @@ return chapters
    TXT → EPUB
 ============================= */
 
-async function createEPUBFromTXT(text,css){
+async function createEPUBFromTXT(text, css){
 
 const zip=new JSZip()
 
+/* 必须第一文件且无压缩 */
 zip.file("mimetype","application/epub+zip",{compression:"STORE"})
 
 zip.file("META-INF/container.xml",
-'<?xml version="1.0"?>' +
-'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">' +
-'<rootfiles>' +
-'<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>' +
-'</rootfiles>' +
+'<?xml version="1.0"?>'+
+'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'+
+'<rootfiles>'+
+'<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>'+
+'</rootfiles>'+
 '</container>'
 )
 
@@ -100,7 +101,9 @@ const chapters=splitChapters(text)
 
 let manifest=""
 let spine=""
+let navList=""
 
+/* 章节 */
 for(let i=0;i<chapters.length;i++){
 
 const ch=chapters[i]
@@ -111,36 +114,57 @@ for(let j=0;j<ch.content.length;j++){
 content+="<p>"+ch.content[j]+"</p>"
 }
 
-const html =
-'<?xml version="1.0" encoding="UTF-8"?>' +
-'<html xmlns="http://www.w3.org/1999/xhtml">' +
-'<head>' +
-'<title>'+ch.title+'</title>' +
-'<link rel="stylesheet" href="publication.css"/>' +
-'</head>' +
-'<body>' +
-'<h2>'+ch.title+'</h2>' +
-content +
-'</body>' +
+zip.file("OEBPS/"+id+".xhtml",
+'<?xml version="1.0" encoding="UTF-8"?>'+
+'<html xmlns="http://www.w3.org/1999/xhtml">'+
+'<head>'+
+'<title>'+ch.title+'</title>'+
+'<link rel="stylesheet" href="publication.css"/>'+
+'</head>'+
+'<body><h2>'+ch.title+'</h2>'+content+'</body>'+
 '</html>'
-
-zip.file("OEBPS/"+id+".xhtml",html)
+)
 
 manifest+='<item id="'+id+'" href="'+id+'.xhtml" media-type="application/xhtml+xml"/>'
 spine+='<itemref idref="'+id+'"/>'
+navList+='<li><a href="'+id+'.xhtml">'+ch.title+'</a></li>'
 }
+
+/* nav.xhtml（关键）*/
+zip.file("OEBPS/nav.xhtml",
+'<?xml version="1.0" encoding="UTF-8"?>'+
+'<html xmlns="http://www.w3.org/1999/xhtml">'+
+'<head><title>Table of Contents</title></head>'+
+'<body>'+
+'<nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc">'+
+'<ol>'+navList+'</ol>'+
+'</nav>'+
+'</body>'+
+'</html>'
+)
 
 zip.file("OEBPS/publication.css",css)
 zip.file("OEBPS/font.otf",base64ToArrayBuffer(FONT_BASE64))
 
+/* content.opf（完整版本）*/
 zip.file("OEBPS/content.opf",
-'<package xmlns="http://www.idpf.org/2007/opf" version="3.0">' +
-'<manifest>' +
-'<item id="css" href="publication.css" media-type="text/css"/>' +
-'<item id="font" href="font.otf" media-type="font/otf"/>' +
-manifest +
-'</manifest>' +
-'<spine>'+spine+'</spine>' +
+'<?xml version="1.0" encoding="UTF-8"?>'+
+'<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">'+
+'<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'+
+'<dc:identifier id="bookid">book-'+Date.now()+'</dc:identifier>'+
+'<dc:title>Converted Book</dc:title>'+
+'<dc:language>zh</dc:language>'+
+'</metadata>'+
+'<manifest>'+
+'<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>'+
+'<item id="css" href="publication.css" media-type="text/css"/>'+
+'<item id="font" href="font.otf" media-type="font/otf"/>'+
+manifest+
+'</manifest>'+
+'<spine>'+
+'<itemref idref="nav"/>'+
+spine+
+'</spine>'+
 '</package>'
 )
 
