@@ -122,7 +122,9 @@ let spine=""
 
 chapters.forEach((ch,i)=>{
 const id="ch"+i
-const content=ch.content.map(p=>\`<p>\${p}</p>\`).join("")
+const content = ch.content
+  .map(p => "<p>" + p + "</p>")
+  .join("")
 
 zip.file(\`OEBPS/\${id}.xhtml\`,`
 <?xml version="1.0" encoding="UTF-8"?>
