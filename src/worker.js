@@ -70,18 +70,43 @@ function decideLayout(text){
 }
 
 function generateCSS(strategy){
- if(strategy==="vertical"){
-  return `body{writing-mode:vertical-rl;line-height:1.9;letter-spacing:0.06em;margin:8% 6%;text-align:justify}
-  p{text-indent:2em;margin-left:1.2em}`
- }
- if(strategy==="compact"){
-  return `body{writing-mode:horizontal-tb;line-height:1.6;margin:5% 6%;text-align:justify}
-  p{text-indent:2em}`
- }
- return `body{writing-mode:horizontal-tb;line-height:1.9;margin:6% 8%;text-align:justify}
- p{text-indent:2em}`
+
+if(strategy==="vertical"){
+return `
+body{
+writing-mode:vertical-rl;
+line-height:1.9;
+letter-spacing:0.06em;
+margin:8% 6%;
+text-align:justify;
+}
+p{text-indent:2em;margin-left:1.2em}
+h1,h2,h3{text-align:center}
+`
 }
 
+if(strategy==="compact"){
+return `
+body{
+line-height:1.6;
+margin:5% 6%;
+text-align:justify;
+}
+p{text-indent:2em}
+`
+}
+
+return `
+body{
+line-height:1.85;
+letter-spacing:0.01em;
+margin:6% 8%;
+text-align:justify;
+}
+p{text-indent:2em;margin-bottom:0.9em}
+h1,h2,h3{text-align:center}
+`
+}
 export default {
  async fetch(request){
 
