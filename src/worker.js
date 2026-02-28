@@ -1,8 +1,8 @@
 import JSZip from "jszip"
 
 /* =============================
-   思源宋体 Base64（演示版）
-   如需完整版建议使用 R2
+   思源宋体（演示版）
+   如需完整字体建议使用 R2
 ============================= */
 
 const FONT_BASE64 =
@@ -17,7 +17,7 @@ return bytes
 }
 
 /* =============================
-   AI 排版
+   AI 排版逻辑
 ============================= */
 
 function extractText(html){
@@ -189,16 +189,95 @@ return zip
 export default {
 async fetch(request){
 
+/* ===== UI 页面 ===== */
+
 if(request.method==="GET"){
 return new Response(`
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>云书排</title>
+<title>云书排 · EPUB AI排版</title>
+<style>
+body{
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
+background:linear-gradient(135deg,#667eea,#764ba2);
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+.card{
+background:white;
+padding:40px;
+border-radius:16px;
+width:420px;
+box-shadow:0 20px 60px rgba(0,0,0,0.2);
+text-align:center;
+}
+input,select{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:8px;
+border:1px solid #ddd;
+}
+button{
+margin-top:20px;
+width:100%;
+padding:14px;
+border:none;
+border-radius:8px;
+background:#667eea;
+color:white;
+font-size:16px;
+cursor:pointer;
+}
+#loading{display:none;margin-top:20px;}
+</style>
 </head>
 <body>
-<h2>云书排 · 运行正常</h2>
+<div class="card">
+<h1>📘 云书排</h1>
+<p>EPUB / TXT 自动排版 · Kindle优化</p>
+<form id="form">
+<input type="file" name="file" accept=".epub,.txt" required>
+<select name="mode">
+<option value="auto">AI自动（推荐）</option>
+<option value="novel">小说阅读</option>
+<option value="compact">紧凑排版</option>
+<option value="vertical">竖排阅读（实验）</option>
+</select>
+<button type="submit">开始转换</button>
+</form>
+<div id="loading">处理中，请稍候...</div>
+</div>
+<script>
+const form=document.getElementById("form")
+const loading=document.getElementById("loading")
+form.onsubmit=async e=>{
+e.preventDefault()
+loading.style.display="block"
+const fd=new FormData(form)
+try{
+const res=await fetch("/",{method:"POST",body:fd})
+if(!res.ok){
+alert(await res.text())
+loading.style.display="none"
+return
+}
+const blob=await res.blob()
+const a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="converted.epub"
+a.click()
+}catch(e){
+alert("转换失败")
+}
+loading.style.display="none"
+}
+</script>
 </body>
 </html>
 `,{
@@ -207,6 +286,8 @@ headers:{
 }
 })
 }
+
+/* ===== 处理转换 ===== */
 
 try{
 
@@ -229,7 +310,6 @@ if(isTXT){
 const text=await file.text()
 const strategy=mode==="auto"?decideLayout(text):mode
 const css=generateCSS(strategy)
-
 zip=await createEPUBFromTXT(text,css)
 
 }else{
