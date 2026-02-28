@@ -1,9 +1,8 @@
 import JSZip from "jszip"
 
 /* =============================
-   思源宋体 Base64（示例字体）
-   ⚠ 演示版（避免Worker过大）
-   后面可换完整字体
+   思源宋体 Base64（演示版）
+   如需完整版建议使用 R2
 ============================= */
 
 const FONT_BASE64 =
@@ -18,7 +17,7 @@ return bytes
 }
 
 /* =============================
-   AI 排版判定
+   AI 排版
 ============================= */
 
 function extractText(html){
@@ -40,7 +39,7 @@ return "novel"
 }
 
 /* =============================
-   出版级 CSS（含字体）
+   出版级 CSS
 ============================= */
 
 function generateCSS(strategy){
@@ -89,7 +88,7 @@ p{text-indent:2em;margin-bottom:0.9em}
 }
 
 /* =============================
-   TXT 自动章节识别
+   TXT 自动分章
 ============================= */
 
 function splitChapters(text){
@@ -98,14 +97,12 @@ const lines=text.split(/\r?\n/)
 let chapters=[]
 let current={title:"正文",content:[]}
 
-const chapterRegex=/^(第[0-9一二三四五六七八九十百千]+章|Chapter\\s+\\d+|\\d+\\.)/i
+const chapterRegex=/^(第[0-9一二三四五六七八九十百千]+章|Chapter\s+\d+|\d+\.)/i
 
 for(const line of lines){
 
 if(chapterRegex.test(line.trim())){
-if(current.content.length){
-chapters.push(current)
-}
+if(current.content.length) chapters.push(current)
 current={title:line.trim(),content:[]}
 }else{
 current.content.push(line)
@@ -117,7 +114,7 @@ return chapters
 }
 
 /* =============================
-   TXT → EPUB 生成（含目录）
+   TXT → EPUB
 ============================= */
 
 async function createEPUBFromTXT(text,css){
@@ -138,7 +135,6 @@ media-type="application/oebps-package+xml"/>
 
 const chapters=splitChapters(text)
 
-// 生成章节文件
 let manifest=""
 let spine=""
 let nav=""
@@ -163,7 +159,6 @@ spine+=`<itemref idref="${id}"/>`
 nav+=`<li><a href="${id}.xhtml">${ch.title}</a></li>`
 })
 
-// 目录
 zip.file("OEBPS/nav.xhtml",`
 <html xmlns="http://www.w3.org/1999/xhtml">
 <body>
@@ -195,7 +190,22 @@ export default {
 async fetch(request){
 
 if(request.method==="GET"){
-return new Response("云书排运行中",{headers:{'Content-Type':'text/plain'}})
+return new Response(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>云书排</title>
+</head>
+<body>
+<h2>云书排 · 运行正常</h2>
+</body>
+</html>
+`,{
+headers:{
+"Content-Type":"text/html; charset=UTF-8"
+}
+})
 }
 
 try{
@@ -214,7 +224,6 @@ return new Response("仅支持 EPUB 或 TXT",{status:400})
 
 let zip
 
-/* ===== TXT处理 ===== */
 if(isTXT){
 
 const text=await file.text()
@@ -223,7 +232,6 @@ const css=generateCSS(strategy)
 
 zip=await createEPUBFromTXT(text,css)
 
-/* ===== EPUB处理 ===== */
 }else{
 
 zip=await JSZip.loadAsync(await file.arrayBuffer())
