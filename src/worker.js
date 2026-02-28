@@ -2,6 +2,53 @@
 import JSZip from "jszip"
 import { parseHTML } from "linkedom"
 
+/* =============================
+   出版级 EPUB 清洗工具
+============================= */
+
+// 删除内联样式
+function removeInlineStyles(html){
+  return html.replace(/style="[^"]*"/g,"")
+}
+
+// 删除 span/font 等垃圾标签（保留内容）
+function removeJunkTags(html){
+  return html
+    .replace(/<\/?span[^>]*>/g,"")
+    .replace(/<\/?font[^>]*>/g,"")
+}
+
+// 删除原有 CSS link
+function removeOldCSS(html){
+  return html.replace(/<link[^>]*stylesheet[^>]*>/gi,"")
+}
+
+// 中文标点优化（基础版）
+function optimizeChinesePunctuation(text){
+  return text
+    .replace(/\s+([，。！？])/g,"$1")
+    .replace(/([（【])/g," $1")
+}
+
+// XHTML 自闭合修复
+function fixSelfClosing(html){
+  return html
+    .replace(/<br>/g,"<br/>")
+    .replace(/<hr>/g,"<hr/>")
+    .replace(/<img([^>]*)>/g,"<img$1/>")
+}
+
+// 综合清洗
+function cleanHTML(html){
+  let out = html
+  out = removeInlineStyles(out)
+  out = removeJunkTags(out)
+  out = removeOldCSS(out)
+  out = fixSelfClosing(out)
+  out = optimizeChinesePunctuation(out)
+  return out
+}
+
 function extractText(html){
   return html.replace(/<[^>]+>/g,"")
 }
