@@ -197,87 +197,207 @@ return new Response(`
 <html>
 <head>
 <meta charset="UTF-8">
-<title>云书排 · EPUB AI排版</title>
+<title>CloudBook · EPUB Formatter</title>
 <style>
+
 body{
 margin:0;
 font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
-background:linear-gradient(135deg,#667eea,#764ba2);
-height:100vh;
+background:#f5f6f7;
+color:#111;
 display:flex;
-align-items:center;
 justify-content:center;
+align-items:center;
+height:100vh;
 }
-.card{
-background:white;
+
+.container{
+background:#fff;
+width:480px;
 padding:40px;
-border-radius:16px;
-width:420px;
-box-shadow:0 20px 60px rgba(0,0,0,0.2);
-text-align:center;
+border-radius:12px;
+box-shadow:0 10px 40px rgba(0,0,0,0.08);
+position:relative;
 }
-input,select{
+
+.lang-switch{
+position:absolute;
+top:20px;
+right:20px;
+font-size:14px;
+cursor:pointer;
+color:#666;
+}
+
+h1{
+margin-top:0;
+font-size:22px;
+font-weight:600;
+}
+
+input[type="file"]{
+margin-top:15px;
+}
+
+.options{
+margin-top:20px;
+}
+
+.option{
+margin-bottom:10px;
+}
+
+button{
+margin-top:25px;
 width:100%;
 padding:12px;
-margin-top:10px;
-border-radius:8px;
-border:1px solid #ddd;
-}
-button{
-margin-top:20px;
-width:100%;
-padding:14px;
-border:none;
-border-radius:8px;
-background:#667eea;
+background:#111;
 color:white;
-font-size:16px;
+border:none;
+border-radius:6px;
 cursor:pointer;
+font-size:15px;
 }
-#loading{display:none;margin-top:20px;}
+
+button:disabled{
+background:#999;
+cursor:not-allowed;
+}
+
+.progress{
+margin-top:20px;
+height:6px;
+background:#eee;
+border-radius:3px;
+overflow:hidden;
+display:none;
+}
+
+.progress-bar{
+height:100%;
+width:0%;
+background:#111;
+transition:width 0.3s;
+}
+
+.download{
+margin-top:20px;
+display:none;
+}
+
+.download button{
+background:#2d6cdf;
+}
+
 </style>
 </head>
 <body>
-<div class="card">
-<h1>📘 云书排</h1>
-<p>EPUB / TXT 自动排版 · Kindle优化</p>
+
+<div class="container">
+
+<div class="lang-switch" onclick="toggleLang()">中 / EN</div>
+
+<h1 id="title">云书排 · 专业排版</h1>
+
 <form id="form">
+
 <input type="file" name="file" accept=".epub,.txt" required>
-<select name="mode">
-<option value="auto">AI自动（推荐）</option>
-<option value="novel">小说阅读</option>
-<option value="compact">紧凑排版</option>
-<option value="vertical">竖排阅读（实验）</option>
-</select>
-<button type="submit">开始转换</button>
-</form>
-<div id="loading">处理中，请稍候...</div>
+
+<div class="options">
+<div class="option">
+<label><input type="radio" name="mode" value="auto" checked> <span id="autoText">AI自动</span></label>
 </div>
+<div class="option">
+<label><input type="radio" name="mode" value="novel"> <span id="novelText">小说阅读</span></label>
+</div>
+<div class="option">
+<label><input type="radio" name="mode" value="compact"> <span id="compactText">紧凑排版</span></label>
+</div>
+</div>
+
+<button type="submit" id="submitBtn">开始转换</button>
+
+</form>
+
+<div class="progress">
+<div class="progress-bar" id="progressBar"></div>
+</div>
+
+<div class="download" id="downloadBox">
+<button id="downloadBtn">下载文件</button>
+</div>
+
+</div>
+
 <script>
-const form=document.getElementById("form")
-const loading=document.getElementById("loading")
-form.onsubmit=async e=>{
-e.preventDefault()
-loading.style.display="block"
-const fd=new FormData(form)
-try{
-const res=await fetch("/",{method:"POST",body:fd})
-if(!res.ok){
-alert(await res.text())
-loading.style.display="none"
-return
+
+let currentLang="zh"
+
+function toggleLang(){
+currentLang=currentLang==="zh"?"en":"zh"
+
+if(currentLang==="en"){
+document.getElementById("title").innerText="CloudBook · Professional Formatter"
+document.getElementById("autoText").innerText="AI Auto"
+document.getElementById("novelText").innerText="Novel Mode"
+document.getElementById("compactText").innerText="Compact Mode"
+document.getElementById("submitBtn").innerText="Convert"
+}else{
+document.getElementById("title").innerText="云书排 · 专业排版"
+document.getElementById("autoText").innerText="AI自动"
+document.getElementById("novelText").innerText="小说阅读"
+document.getElementById("compactText").innerText="紧凑排版"
+document.getElementById("submitBtn").innerText="开始转换"
 }
-const blob=await res.blob()
+}
+
+const form=document.getElementById("form")
+const progress=document.querySelector(".progress")
+const progressBar=document.getElementById("progressBar")
+const downloadBox=document.getElementById("downloadBox")
+const downloadBtn=document.getElementById("downloadBtn")
+let downloadBlob=null
+
+form.onsubmit=function(e){
+e.preventDefault()
+
+progress.style.display="block"
+progressBar.style.width="10%"
+
+const fd=new FormData(form)
+
+const xhr=new XMLHttpRequest()
+xhr.open("POST","/")
+
+xhr.upload.onprogress=function(e){
+if(e.lengthComputable){
+let percent=(e.loaded/e.total)*50
+progressBar.style.width=percent+"%"
+}
+}
+
+xhr.onload=function(){
+progressBar.style.width="100%"
+setTimeout(()=>{
+downloadBlob=new Blob([xhr.response],{type:"application/epub+zip"})
+downloadBox.style.display="block"
+},300)
+}
+
+xhr.responseType="arraybuffer"
+xhr.send(fd)
+}
+
+downloadBtn.onclick=function(){
+if(!downloadBlob) return
 const a=document.createElement("a")
-a.href=URL.createObjectURL(blob)
+a.href=URL.createObjectURL(downloadBlob)
 a.download="converted.epub"
 a.click()
-}catch(e){
-alert("转换失败")
 }
-loading.style.display="none"
-}
+
 </script>
+
 </body>
 </html>
 `,{
