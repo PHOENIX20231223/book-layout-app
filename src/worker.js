@@ -197,13 +197,16 @@ return new Response(`
 <html>
 <head>
 <meta charset="UTF-8">
-<title>CloudBook · EPUB Formatter</title>
+<title>CloudBook</title>
+
 <style>
+
+/* ===== 全局 ===== */
 
 body{
 margin:0;
 font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
-background:#f5f6f7;
+background:#f3f4f6;
 color:#111;
 display:flex;
 justify-content:center;
@@ -211,23 +214,29 @@ align-items:center;
 height:100vh;
 }
 
+/* ===== 主容器 ===== */
+
 .container{
 background:#fff;
-width:480px;
-padding:40px;
-border-radius:12px;
-box-shadow:0 10px 40px rgba(0,0,0,0.08);
+width:500px;
+padding:50px;
+border-radius:10px;
+box-shadow:0 8px 30px rgba(0,0,0,0.06);
 position:relative;
 }
 
+/* ===== 语言切换 ===== */
+
 .lang-switch{
 position:absolute;
-top:20px;
+top:18px;
 right:20px;
 font-size:14px;
 cursor:pointer;
 color:#666;
 }
+
+/* ===== 标题 ===== */
 
 h1{
 margin-top:0;
@@ -235,37 +244,62 @@ font-size:22px;
 font-weight:600;
 }
 
-input[type="file"]{
-margin-top:15px;
+/* ===== 大文件选择按钮 ===== */
+
+.file-input{
+margin-top:20px;
+border:2px dashed #ddd;
+padding:30px;
+border-radius:8px;
+text-align:center;
+cursor:pointer;
+font-size:16px;
+color:#555;
+transition:all 0.2s;
 }
 
+.file-input:hover{
+border-color:#999;
+background:#fafafa;
+}
+
+.file-input input{
+display:none;
+}
+
+/* ===== 单选 ===== */
+
 .options{
-margin-top:20px;
+margin-top:25px;
 }
 
 .option{
-margin-bottom:10px;
-}
-
-button{
-margin-top:25px;
-width:100%;
-padding:12px;
-background:#111;
-color:white;
-border:none;
-border-radius:6px;
-cursor:pointer;
+margin-bottom:12px;
 font-size:15px;
 }
 
-button:disabled{
-background:#999;
-cursor:not-allowed;
+/* ===== 按钮 ===== */
+
+button{
+margin-top:30px;
+width:100%;
+padding:14px;
+background:#666;
+color:white;
+border:none;
+border-radius:6px;
+font-size:16px;
+cursor:pointer;
 }
 
+button:disabled{
+background:#bbb;
+}
+
+/* ===== 进度条 ===== */
+
 .progress{
-margin-top:20px;
+margin-top:25px;
 height:6px;
 background:#eee;
 border-radius:3px;
@@ -276,21 +310,24 @@ display:none;
 .progress-bar{
 height:100%;
 width:0%;
-background:#111;
+background:#666;
 transition:width 0.3s;
 }
 
+/* ===== 下载 ===== */
+
 .download{
-margin-top:20px;
+margin-top:25px;
 display:none;
 }
 
 .download button{
-background:#2d6cdf;
+background:#333;
 }
 
 </style>
 </head>
+
 <body>
 
 <div class="container">
@@ -301,7 +338,10 @@ background:#2d6cdf;
 
 <form id="form">
 
+<label class="file-input">
+<span id="fileText">点击选择 EPUB 或 TXT 文件</span>
 <input type="file" name="file" accept=".epub,.txt" required>
+</label>
 
 <div class="options">
 <div class="option">
@@ -331,25 +371,33 @@ background:#2d6cdf;
 
 <script>
 
+/* ===== 语言切换 ===== */
+
 let currentLang="zh"
 
 function toggleLang(){
 currentLang=currentLang==="zh"?"en":"zh"
 
 if(currentLang==="en"){
-document.getElementById("title").innerText="CloudBook · Professional Formatter"
-document.getElementById("autoText").innerText="AI Auto"
-document.getElementById("novelText").innerText="Novel Mode"
-document.getElementById("compactText").innerText="Compact Mode"
-document.getElementById("submitBtn").innerText="Convert"
+title.innerText="CloudBook · Professional Formatter"
+fileText.innerText="Click to select EPUB or TXT file"
+autoText.innerText="AI Auto"
+novelText.innerText="Novel Mode"
+compactText.innerText="Compact Mode"
+submitBtn.innerText="Convert"
+downloadBtn.innerText="Download File"
 }else{
-document.getElementById("title").innerText="云书排 · 专业排版"
-document.getElementById("autoText").innerText="AI自动"
-document.getElementById("novelText").innerText="小说阅读"
-document.getElementById("compactText").innerText="紧凑排版"
-document.getElementById("submitBtn").innerText="开始转换"
+title.innerText="云书排 · 专业排版"
+fileText.innerText="点击选择 EPUB 或 TXT 文件"
+autoText.innerText="AI自动"
+novelText.innerText="小说阅读"
+compactText.innerText="紧凑排版"
+submitBtn.innerText="开始转换"
+downloadBtn.innerText="下载文件"
 }
 }
+
+/* ===== 上传 ===== */
 
 const form=document.getElementById("form")
 const progress=document.querySelector(".progress")
