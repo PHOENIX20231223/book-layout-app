@@ -186,7 +186,9 @@ a.click()
   const strategy=mode==="auto"?decideLayout(textSample):mode
   const css=generateCSS(strategy)
 
+  if(!zip.files["publication.css"]){
   zip.file("publication.css",css)
+}
 
   for(const name of Object.keys(zip.files)){
     if(name.endsWith(".xhtml")||name.endsWith(".html")){
