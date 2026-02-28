@@ -38,9 +38,55 @@ function generateCSS(strategy){
 export default {
  async fetch(request){
 
-  if(request.method==="GET"){
-    return new Response(await fetch("https://book-layout-ui.pages.dev"))
+ if (request.method === "GET") {
+  return new Response(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="UTF-8">
+  <title>云书排 · EPUB AI排版工具</title>
+  <meta name="description" content="EPUB 自动排版 · 横竖排转换 · AI出版级排版">
+  </head>
+
+  <body style="font-family:sans-serif;padding:40px">
+
+  <h1>云书排 · EPUB AI排版工具</h1>
+
+  <form id="form">
+  <input type="file" name="file" accept=".epub" required><br><br>
+
+  <select name="mode">
+  <option value="auto">AI自动（推荐）</option>
+  <option value="horizontal">横排出版物</option>
+  <option value="vertical">竖排阅读</option>
+  <option value="novel">小说阅读</option>
+  <option value="compact">紧凑排版</option>
+  </select><br><br>
+
+  <button type="submit">开始转换</button>
+  </form>
+
+  <hr>
+  <p>永久免费使用。如有帮助，可支持开发者 ❤️</p>
+  <a href="https://buymeacoffee.com/">支持开发者</a>
+
+  <script>
+  document.getElementById("form").onsubmit=async e=>{
+    e.preventDefault()
+    const fd=new FormData(e.target)
+    const res=await fetch("/",{method:"POST",body:fd})
+    const blob=await res.blob()
+    const a=document.createElement("a")
+    a.href=URL.createObjectURL(blob)
+    a.download="converted.epub"
+    a.click()
   }
+  </script>
+
+  </body>
+  </html>
+  `, { headers: { "Content-Type": "text/html" } })
+}
 
   const form=await request.formData()
   const file=form.get("file")
