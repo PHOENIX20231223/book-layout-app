@@ -8,12 +8,10 @@ const FONT_BASE64 =
 "AAEAAAALAIAAAwAwT1MvMg8SBJcAAAC8AAAAYGNtYXABdXUAAAF8AAABPGdhc3AAAAAQAAADHAAAAAhnbHlmAAAAAAADHAAAACBoZWFkAAABJAAAADZoaGVhAAABWAAAACRobXR4AAABeAAAABRsb2NhAAABkAAAABRtYXhwAAABsAAAACBuYW1lAAABzAAAADZwb3N0AAAB/AAAACBwcmVwAAACGAAAADYAAQAAAADMPaLPAAAAAMw9os8AAQAAAAA="
 
 function base64ToArrayBuffer(base64){
-const binary = atob(base64)
-const len = binary.length
-const bytes = new Uint8Array(len)
-for(let i=0;i<len;i++){
-bytes[i] = binary.charCodeAt(i)
-}
+const binary=atob(base64)
+const len=binary.length
+const bytes=new Uint8Array(len)
+for(let i=0;i<len;i++) bytes[i]=binary.charCodeAt(i)
 return bytes
 }
 
@@ -28,10 +26,8 @@ return html.replace(/<[^>]+>/g,"")
 function classicalRatio(text){
 const words="之乎者也焉其若乃则兮矣耳"
 let count=0
-for(const c of text){
-if(words.includes(c)) count++
-}
-return count / Math.max(text.length,1)
+for(const c of text) if(words.includes(c)) count++
+return count/Math.max(text.length,1)
 }
 
 function decideLayout(text){
@@ -75,11 +71,12 @@ p{text-indent:2em;margin-bottom:0.9em}
 }
 
 /* =============================
-   TXT 分章
+   TXT 自动分章
 ============================= */
 
 function splitChapters(text){
-const lines=text.split(/\r?\n/)
+
+const lines=text.split(/\\r?\\n/)
 let chapters=[]
 let current={title:"正文",content:[]}
 
@@ -87,14 +84,13 @@ const reg=/^(第[0-9一二三四五六七八九十百千]+章|Chapter\\s+\\d+|\\
 
 for(const line of lines){
 if(reg.test(line.trim())){
-if(current.content.length){
-chapters.push(current)
-}
+if(current.content.length) chapters.push(current)
 current={title:line.trim(),content:[]}
 }else{
 current.content.push(line)
 }
 }
+
 chapters.push(current)
 return chapters
 }
@@ -126,9 +122,9 @@ let spine=""
 
 chapters.forEach((ch,i)=>{
 const id="ch"+i
-const content=ch.content.map(p=>`<p>${p}</p>`).join("")
+const content=ch.content.map(p=>\`<p>\${p}</p>\`).join("")
 
-zip.file(`OEBPS/${id}.xhtml`,`
+zip.file(\`OEBPS/\${id}.xhtml\`,`
 <?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -141,8 +137,8 @@ ${content}
 </body>
 </html>`)
 
-manifest+=`<item id="${id}" href="${id}.xhtml" media-type="application/xhtml+xml"/>`
-spine+=`<itemref idref="${id}"/>`
+manifest+=\`<item id="\${id}" href="\${id}.xhtml" media-type="application/xhtml+xml"/>\`
+spine+=\`<itemref idref="\${id}"/>\`
 })
 
 zip.file("OEBPS/publication.css",css)
@@ -162,7 +158,7 @@ return zip
 }
 
 /* =============================
-   Worker 主逻辑
+   Worker 主入口
 ============================= */
 
 export default {
@@ -181,8 +177,6 @@ return new Response(`
 <title>CloudBook</title>
 
 <style>
-*{box-sizing:border-box}
-
 body{
 margin:0;
 font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
@@ -190,29 +184,29 @@ background:#ffffff;
 color:#111;
 }
 
-.page{
-max-width:560px;
+.container{
+max-width:520px;
 margin:120px auto;
+text-align:center;
 padding:0 24px;
 }
 
-.logo{
+h1{
 font-size:28px;
+margin-bottom:8px;
 font-weight:600;
-margin-bottom:6px;
 }
 
-.desc{
+.subtitle{
 color:#666;
 font-size:14px;
-margin-bottom:40px;
+margin-bottom:60px;
 }
 
 .upload{
-border:1.5px solid #e5e5e5;
-border-radius:14px;
-padding:44px;
-text-align:center;
+border:1px solid #ddd;
+border-radius:16px;
+padding:50px 30px;
 cursor:pointer;
 transition:.2s;
 }
@@ -233,96 +227,74 @@ font-size:13px;
 color:#777;
 }
 
-.file{
-margin-top:12px;
+.file-name{
+margin-top:16px;
 font-size:13px;
 color:#666;
 display:none;
 }
 
-.section{
-margin-top:36px;
-}
-
-.section-title{
-font-size:13px;
-color:#777;
-margin-bottom:10px;
-}
-
-.options{
+.mode{
+margin-top:50px;
 display:flex;
-gap:10px;
+justify-content:center;
+gap:12px;
 }
 
-.option{
-flex:1;
-border:1px solid #e5e5e5;
-border-radius:10px;
-padding:14px;
-text-align:center;
+.mode label{
+border:1px solid #ddd;
+padding:12px 20px;
+border-radius:999px;
 cursor:pointer;
+font-size:14px;
 }
 
-.primary{
-margin-top:36px;
+.mode input{margin-right:6px}
+
+button{
+margin-top:50px;
 width:100%;
 padding:16px;
-border:none;
-border-radius:12px;
 background:#111;
 color:white;
+border:none;
+border-radius:16px;
 font-size:16px;
 cursor:pointer;
 }
 
 .status{
-margin-top:20px;
-font-size:14px;
+margin-top:24px;
 color:#666;
-}
-
-.lang{
-position:fixed;
-top:20px;
-right:24px;
 font-size:14px;
-color:#666;
-cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="lang" onclick="toggleLang()">中 / EN</div>
+<div class="container">
 
-<div class="page">
-
-<div class="logo" id="logo">云书排</div>
-<div class="desc" id="desc">专业电子书排版工具</div>
+<h1>云书排</h1>
+<div class="subtitle">专业电子书排版工具</div>
 
 <form id="form">
 
 <label class="upload">
-<div class="upload-title" id="uploadTitle">选择 EPUB 或 TXT 文件</div>
-<div class="upload-sub" id="uploadSub">拖拽或点击上传</div>
+<div class="upload-title">选择 EPUB 或 TXT 文件</div>
+<div class="upload-sub">拖拽或点击上传</div>
 <input type="file" name="file" accept=".epub,.txt" required>
 </label>
 
-<div class="file" id="fileName"></div>
+<div class="file-name" id="fileName"></div>
 
-<div class="section">
-<div class="section-title" id="modeTitle">排版模式</div>
-
-<div class="options">
-<label class="option"><input type="radio" name="mode" value="auto" checked> AI</label>
-<label class="option"><input type="radio" name="mode" value="novel"> Novel</label>
-<label class="option"><input type="radio" name="mode" value="compact"> Compact</label>
-</div>
+<div class="mode">
+<label><input type="radio" name="mode" value="auto" checked> AI</label>
+<label><input type="radio" name="mode" value="novel"> Novel</label>
+<label><input type="radio" name="mode" value="compact"> Compact</label>
 </div>
 
-<button class="primary" id="btn">开始转换</button>
+<button>开始转换</button>
 
 </form>
 
@@ -334,6 +306,7 @@ cursor:pointer;
 
 const input=document.querySelector('input[type=file]')
 const fileName=document.getElementById("fileName")
+
 input.onchange=e=>{
 fileName.style.display="block"
 fileName.innerText=e.target.files[0].name
@@ -360,17 +333,6 @@ a.click()
 status.innerText="完成"
 }
 
-let lang="zh"
-function toggleLang(){
-lang=lang==="zh"?"en":"zh"
-logo.innerText=lang==="zh"?"云书排":"CloudBook"
-desc.innerText=lang==="zh"?"专业电子书排版工具":"Professional ebook formatter"
-uploadTitle.innerText=lang==="zh"?"选择 EPUB 或 TXT 文件":"Select EPUB or TXT"
-uploadSub.innerText=lang==="zh"?"拖拽或点击上传":"Drop or click"
-modeTitle.innerText=lang==="zh"?"排版模式":"Layout Mode"
-btn.innerText=lang==="zh"?"开始转换":"Convert"
-}
-
 </script>
 
 </body>
@@ -381,7 +343,7 @@ headers:{ "Content-Type":"text/html; charset=UTF-8" }
 }
 
 /* =============================
-   后端转换
+   后端处理
 ============================= */
 
 try{
@@ -401,11 +363,15 @@ return new Response("仅支持 EPUB 或 TXT",{status:400})
 
 let zip
 
+/* TXT */
 if(isTXT){
+
 const text=await file.text()
 const strategy=mode==="auto"?decideLayout(text):mode
 const css=generateCSS(strategy)
 zip=await createEPUBFromTXT(text,css)
+
+/* EPUB */
 }else{
 
 zip=await JSZip.loadAsync(await file.arrayBuffer())
