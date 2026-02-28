@@ -201,58 +201,59 @@ return new Response(`
 
 <style>
 
-/* ===== 基础 ===== */
+/* ===== Reset ===== */
 
 *{box-sizing:border-box}
-
 body{
 margin:0;
 font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica;
-background:#fafafa;
+background:#f6f7f9;
+color:#111;
 display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-color:#111;
 }
 
-/* ===== 主卡片 ===== */
+/* ===== App ===== */
 
-.card{
-width:520px;
+.app{
+width:640px;
 background:white;
-border-radius:16px;
+border-radius:18px;
+box-shadow:0 30px 80px rgba(0,0,0,.08);
 padding:48px;
-box-shadow:0 20px 60px rgba(0,0,0,0.06);
 }
 
-/* ===== 标题区 ===== */
+/* ===== Header ===== */
 
 .header{
-margin-bottom:36px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:32px;
 }
 
-.title{
-font-size:24px;
+.logo{
+font-size:22px;
 font-weight:600;
-margin-bottom:6px;
 }
 
-.subtitle{
-color:#777;
+.lang{
 font-size:14px;
+color:#666;
+cursor:pointer;
 }
 
-/* ===== 上传区 ===== */
+/* ===== Upload ===== */
 
 .upload{
 border:2px dashed #e5e5e5;
-border-radius:12px;
-padding:40px;
+border-radius:14px;
+padding:48px;
 text-align:center;
 cursor:pointer;
-transition:all .2s;
-margin-bottom:28px;
+transition:.2s;
 }
 
 .upload:hover{
@@ -269,10 +270,33 @@ margin-bottom:6px;
 
 .upload-sub{
 font-size:13px;
-color:#888;
+color:#777;
 }
 
-/* ===== 选项 ===== */
+/* ===== File Card ===== */
+
+.file-card{
+margin-top:20px;
+border:1px solid #eee;
+border-radius:12px;
+padding:16px;
+display:none;
+justify-content:space-between;
+align-items:center;
+}
+
+.status{
+font-size:12px;
+padding:4px 10px;
+border-radius:20px;
+background:#eee;
+}
+
+/* ===== Mode ===== */
+
+.section{
+margin-top:28px;
+}
 
 .section-title{
 font-size:13px;
@@ -281,32 +305,29 @@ margin-bottom:10px;
 }
 
 .options{
-display:flex;
-gap:20px;
-margin-bottom:30px;
+display:grid;
+grid-template-columns:1fr 1fr 1fr;
+gap:12px;
 }
 
 .option{
-flex:1;
 border:1px solid #eee;
-border-radius:10px;
 padding:14px;
+border-radius:10px;
+text-align:center;
 cursor:pointer;
-transition:.2s;
 }
 
 .option:hover{
 border-color:#999;
+background:#fafafa;
 }
 
-.option input{
-margin-right:6px;
-}
-
-/* ===== 按钮 ===== */
+/* ===== Button ===== */
 
 button{
 width:100%;
+margin-top:28px;
 padding:14px;
 border:none;
 border-radius:10px;
@@ -314,15 +335,12 @@ background:#111;
 color:white;
 font-size:15px;
 cursor:pointer;
-transition:.2s;
 }
 
-button:hover{opacity:.9}
-
-/* ===== 进度 ===== */
+/* ===== Progress ===== */
 
 .progress{
-margin-top:24px;
+margin-top:20px;
 height:6px;
 background:#eee;
 border-radius:3px;
@@ -334,13 +352,12 @@ display:none;
 height:100%;
 width:0%;
 background:#111;
-transition:.3s;
 }
 
-/* ===== 下载 ===== */
+/* ===== Download ===== */
 
 .download{
-margin-top:24px;
+margin-top:20px;
 display:none;
 }
 
@@ -348,61 +365,48 @@ display:none;
 background:#444;
 }
 
-/* ===== 语言 ===== */
-
-.lang{
-position:absolute;
-top:20px;
-right:24px;
-font-size:14px;
-color:#777;
-cursor:pointer;
-}
-
 </style>
 </head>
 
 <body>
 
-<div class="lang" onclick="toggleLang()">中 / EN</div>
-
-<div class="card">
+<div class="app">
 
 <div class="header">
-<div class="title" id="title">云书排</div>
-<div class="subtitle" id="subtitle">专业电子书排版工具</div>
+<div class="logo" id="logo">云书排</div>
+<div class="lang" onclick="toggleLang()">中 / EN</div>
 </div>
 
 <form id="form">
 
-<label class="upload">
-<div class="upload-title" id="uploadTitle">选择文件</div>
-<div class="upload-sub" id="uploadSub">支持 EPUB 或 TXT</div>
+<label class="upload" id="uploadBox">
+<div class="upload-title" id="uploadTitle">拖拽文件或点击上传</div>
+<div class="upload-sub" id="uploadSub">支持 EPUB / TXT</div>
 <input type="file" name="file" accept=".epub,.txt" required>
 </label>
 
+<div class="file-card" id="fileCard">
+<div id="fileName"></div>
+<div class="status" id="status">Ready</div>
+</div>
+
+<div class="section">
 <div class="section-title" id="modeTitle">排版模式</div>
 
 <div class="options">
-
 <label class="option">
-<input type="radio" name="mode" value="auto" checked>
-<span id="autoText">AI自动</span>
+<input type="radio" name="mode" value="auto" checked> AI
 </label>
-
 <label class="option">
-<input type="radio" name="mode" value="novel">
-<span id="novelText">小说阅读</span>
+<input type="radio" name="mode" value="novel"> Novel
 </label>
-
 <label class="option">
-<input type="radio" name="mode" value="compact">
-<span id="compactText">紧凑排版</span>
+<input type="radio" name="mode" value="compact"> Compact
 </label>
-
+</div>
 </div>
 
-<button type="submit" id="submitBtn">开始转换</button>
+<button type="submit" id="convertBtn">开始转换</button>
 
 </form>
 
@@ -416,53 +420,46 @@ cursor:pointer;
 
 <script>
 
-/* ===== 语言切换 ===== */
+/* ===== Language ===== */
 
 let lang="zh"
 
 function toggleLang(){
 lang=lang==="zh"?"en":"zh"
 
-if(lang==="en"){
-title.innerText="CloudBook"
-subtitle.innerText="Professional ebook formatter"
-uploadTitle.innerText="Select File"
-uploadSub.innerText="EPUB or TXT supported"
-modeTitle.innerText="Layout Mode"
-autoText.innerText="AI Auto"
-novelText.innerText="Novel"
-compactText.innerText="Compact"
-submitBtn.innerText="Convert"
-downloadBtn.innerText="Download"
-}else{
-title.innerText="云书排"
-subtitle.innerText="专业电子书排版工具"
-uploadTitle.innerText="选择文件"
-uploadSub.innerText="支持 EPUB 或 TXT"
-modeTitle.innerText="排版模式"
-autoText.innerText="AI自动"
-novelText.innerText="小说阅读"
-compactText.innerText="紧凑排版"
-submitBtn.innerText="开始转换"
-downloadBtn.innerText="下载文件"
-}
+logo.innerText=lang==="zh"?"云书排":"CloudBook"
+uploadTitle.innerText=lang==="zh"?"拖拽文件或点击上传":"Drop or select file"
+uploadSub.innerText=lang==="zh"?"支持 EPUB / TXT":"EPUB / TXT supported"
+modeTitle.innerText=lang==="zh"?"排版模式":"Layout Mode"
+convertBtn.innerText=lang==="zh"?"开始转换":"Convert"
+downloadBtn.innerText=lang==="zh"?"下载文件":"Download"
 }
 
-/* ===== 上传逻辑 ===== */
+/* ===== File ===== */
+
+const input=document.querySelector('input[type=file]')
+const fileCard=document.getElementById("fileCard")
+const fileName=document.getElementById("fileName")
+const status=document.getElementById("status")
+
+input.onchange=e=>{
+fileName.innerText=e.target.files[0].name
+fileCard.style.display="flex"
+}
+
+/* ===== Upload ===== */
 
 const form=document.getElementById("form")
-const progress=document.querySelector(".progress")
 const bar=document.getElementById("bar")
+const progress=document.querySelector(".progress")
 const downloadBox=document.getElementById("downloadBox")
-const downloadBtn=document.getElementById("downloadBtn")
-
 let blob=null
 
 form.onsubmit=e=>{
 e.preventDefault()
 
+status.innerText="Processing"
 progress.style.display="block"
-bar.style.width="15%"
 
 const fd=new FormData(form)
 const xhr=new XMLHttpRequest()
@@ -478,6 +475,7 @@ bar.style.width=(e.loaded/e.total*60)+"%"
 
 xhr.onload=()=>{
 bar.style.width="100%"
+status.innerText="Done"
 blob=new Blob([xhr.response],{type:"application/epub+zip"})
 downloadBox.style.display="block"
 }
@@ -485,12 +483,33 @@ downloadBox.style.display="block"
 xhr.send(fd)
 }
 
+/* ===== Download ===== */
+
 downloadBtn.onclick=()=>{
 if(!blob) return
 const a=document.createElement("a")
 a.href=URL.createObjectURL(blob)
 a.download="converted.epub"
 a.click()
+}
+
+/* ===== Drag Upload ===== */
+
+const uploadBox=document.getElementById("uploadBox")
+
+uploadBox.ondragover=e=>{
+e.preventDefault()
+uploadBox.style.borderColor="#111"
+}
+
+uploadBox.ondragleave=()=>{
+uploadBox.style.borderColor="#e5e5e5"
+}
+
+uploadBox.ondrop=e=>{
+e.preventDefault()
+input.files=e.dataTransfer.files
+input.onchange({target:input})
 }
 
 </script>
