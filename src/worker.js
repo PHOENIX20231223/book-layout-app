@@ -30,20 +30,30 @@ function decideLayout(text){
 
 function generateCSS(strategy){
 
+// ===== 竖排（Kindle兼容）=====
 if(strategy==="vertical"){
 return `
-body{
-writing-mode:vertical-rl;
+html, body{
+writing-mode: vertical-rl;
+-webkit-writing-mode: vertical-rl;
 line-height:1.9;
 letter-spacing:0.06em;
 margin:8% 6%;
 text-align:justify;
 }
-p{text-indent:2em;margin-left:1.2em}
-h1,h2,h3{text-align:center}
+
+p{
+text-indent:2em;
+margin-left:1.2em;
+}
+
+h1,h2,h3{
+text-align:center;
+}
 `
 }
 
+// ===== 紧凑 =====
 if(strategy==="compact"){
 return `
 body{
@@ -55,6 +65,7 @@ p{text-indent:2em}
 `
 }
 
+// ===== 默认阅读 =====
 return `
 body{
 line-height:1.85;
