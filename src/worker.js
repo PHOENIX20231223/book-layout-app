@@ -191,12 +191,17 @@ a.click()
   for(const name of Object.keys(zip.files)){
     if(name.endsWith(".xhtml")||name.endsWith(".html")){
       const html=await zip.file(name).async("string")
-      const {document}=parseHTML(html)
-      const link=document.createElement("link")
-      link.rel="stylesheet"
-      link.href="publication.css"
-      document.head.appendChild(link)
-      zip.file(name,document.toString())
+  // 安全注入CSS（不会破坏EPUB结构）
+let newHtml = html
+
+if (!html.includes("publication.css")) {
+  newHtml = html.replace(
+    /<head[^>]*>/i,
+    match => match + '\\n<link rel="stylesheet" href="publication.css"/>'
+  )
+}
+
+zip.file(name, newHtml)
     }
   }
 
